@@ -71,7 +71,7 @@ function Dashboard() {
   ];
 
   return (
-    <div className="bg-gray-100 min-h-screen p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <div className="space-y-2">
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-600 text-lg">Monitor your library's performance and key metrics</p>
