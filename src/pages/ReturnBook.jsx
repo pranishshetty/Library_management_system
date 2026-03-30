@@ -76,7 +76,10 @@ function ReturnBook() {
                     <FiBook className="w-4 h-4 text-amber-500" />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-semibold text-slate-800 text-[15px] truncate">{record.title}</p>
+                    <p className="font-semibold text-slate-800 text-[15px] truncate">
+                      <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md uppercase tracking-tighter mr-2">ID: {record.book_id}</span>
+                      {record.title}
+                    </p>
                     <p className="text-sm text-slate-400 truncate">{record.author}</p>
                     <div className="flex items-center gap-4 mt-1.5 text-[12px] text-slate-400">
                       <span className="flex items-center gap-1">
