@@ -1,126 +1,153 @@
 import { useState, useEffect } from 'react';
-import { FiBookOpen, FiTrendingUp, FiCheckCircle, FiUsers } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
+import { FiBook, FiCheckCircle, FiSend, FiTrendingUp, FiArrowRight, FiClock } from 'react-icons/fi';
+import { getDashboard } from '../services/api';
 
 function Dashboard() {
-  const [stats, setStats] = useState({
-    total_books: 1250,
-    available_books: 842,
-    issued_books: 408,
-    this_month: 156
-  });
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/dashboard')
-      .then(res => res.json())
-      .then(data => {
-        setStats({
-          total_books: data.stats.total_books || 1250,
-          issued_books: data.stats.issued_books || 408,
-          available_books: data.stats.available_books || 842,
-          this_month: data.stats.this_month || 156
-        });
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Error fetching dashboard:", err);
-        setLoading(false);
-      });
+    getDashboard()
+      .then(setData)
+      .catch(err => console.error(err))
+      .finally(() => setLoading(false));
   }, []);
 
+  const stats = data?.stats || { total_books: 0, available_books: 0, issued_books: 0, this_month: 0 };
+  const activities = data?.recent_activities || [];
+
   const statCards = [
-    {
-      label: 'TOTAL VOLUMES',
-      value: stats.total_books.toLocaleString(),
-      subtitle: 'CURATED TITLES',
-      icon: FiBookOpen,
-      color: 'from-blue-500 to-blue-600',
-      bgColor: 'bg-blue-50',
-      textColor: 'text-blue-600',
-    },
-    {
-      label: 'IN CIRCULATION',
-      value: stats.issued_books.toLocaleString(),
-      subtitle: 'ACTIVE LOANS',
-      icon: FiTrendingUp,
-      color: 'from-indigo-500 to-indigo-600',
-      bgColor: 'bg-indigo-50',
-      textColor: 'text-indigo-600',
-    },
-    {
-      label: 'AVAILABLE',
-      value: stats.available_books.toLocaleString(),
-      subtitle: 'READY TO BORROW',
-      icon: FiCheckCircle,
-      color: 'from-emerald-500 to-emerald-600',
-      bgColor: 'bg-emerald-50',
-      textColor: 'text-emerald-600',
-    },
-    {
-      label: 'MEMBERSHIP',
-      value: stats.this_month,
-      subtitle: 'ACTIVE READERS',
-      icon: FiUsers,
-      color: 'from-violet-500 to-violet-600',
-      bgColor: 'bg-violet-50',
-      textColor: 'text-violet-600',
-    },
+    { label: 'Total Books', value: stats.total_books, icon: FiBook, color: 'blue', bg: 'bg-blue-50', text: 'text-blue-600', ring: 'ring-blue-100' },
+    { label: 'Available', value: stats.available_books, icon: FiCheckCircle, color: 'emerald', bg: 'bg-emerald-50', text: 'text-emerald-600', ring: 'ring-emerald-100' },
+    { label: 'Issued', value: stats.issued_books, icon: FiSend, color: 'amber', bg: 'bg-amber-50', text: 'text-amber-600', ring: 'ring-amber-100' },
+    { label: 'This Month', value: stats.this_month, icon: FiTrendingUp, color: 'violet', bg: 'bg-violet-50', text: 'text-violet-600', ring: 'ring-violet-100' },
   ];
 
-  return (
-    <div className="max-w-7xl mx-auto flex flex-col min-h-[calc(100vh-140px)] justify-between pb-8">
-      
-      {/* Header Section */}
-      <div className="pt-4 animate-fade-in">
-        <div className="mb-4">
-          <span className="text-[10px] tracking-[0.25em] font-semibold text-blue-500 uppercase px-3 py-1 bg-blue-50 rounded-full">OVERVIEW</span>
-        </div>
-        
-        <div className="flex justify-between items-start mt-10">
-          <div className="max-w-xl">
-            <h1 className="text-6xl xl:text-7xl font-serif text-slate-800 leading-[1.1] italic mb-8 -ml-1">
-              Portfolio<br />
-              <span className="gradient-text">Performance</span>
-            </h1>
-            <p className="text-[10px] tracking-[0.15em] text-slate-400 leading-relaxed uppercase">
-              MONITORING THE FLOW OF INTELLECTUAL ASSETS AND<br />
-              COMMUNITY ENGAGEMENT THROUGH THE CENTRAL<br />
-              TREASURY
-            </p>
-          </div>
-          
-          <div className="text-right mt-8 pr-8">
-            <div className="bg-white rounded-3xl px-10 py-8 border border-blue-100/60 shadow-lg shadow-blue-500/5">
-              <h2 className="text-5xl xl:text-6xl font-serif gradient-text mb-3">92%</h2>
-              <p className="text-[8px] tracking-[0.25em] font-bold text-slate-400 uppercase">UTILIZATION RATE</p>
-            </div>
-          </div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm text-slate-400 font-medium">Loading dashboard...</p>
         </div>
       </div>
+    );
+  }
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mt-16">
-        {statCards.map((card, index) => {
+  return (
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Welcome */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">Welcome back! 👋</h2>
+          <p className="text-sm text-slate-400 mt-0.5">Here's what's happening in your library today.</p>
+        </div>
+        <Link
+          to="/add-book"
+          className="inline-flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-600/20 w-fit"
+        >
+          Add New Book
+          <FiArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {statCards.map((card, i) => {
           const Icon = card.icon;
           return (
             <div
-              key={index}
-              className="bg-white rounded-2xl p-6 border border-blue-100/60 hover:shadow-xl hover:shadow-blue-500/8 hover:-translate-y-1 transition-all duration-300 card-glow group"
-              style={{ animationDelay: `${index * 100}ms` }}
+              key={i}
+              className="bg-white rounded-2xl p-5 border border-slate-100 hover:shadow-lg hover:shadow-slate-200/50 hover:-translate-y-0.5 transition-all duration-300 animate-slide-up"
+              style={{ animationDelay: `${i * 80}ms` }}
             >
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-[9px] tracking-[0.18em] text-slate-400 font-semibold uppercase">{card.label}</h3>
-                <div className={`w-9 h-9 ${card.bgColor} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                  <Icon className={`w-4 h-4 ${card.textColor}`} />
+              <div className="flex items-center justify-between mb-4">
+                <div className={`w-10 h-10 ${card.bg} rounded-xl flex items-center justify-center ring-4 ${card.ring}`}>
+                  <Icon className={`w-5 h-5 ${card.text}`} />
                 </div>
               </div>
-              <p className="text-3xl font-serif text-slate-800 mb-3 group-hover:text-blue-600 transition-colors">{card.value}</p>
-              <p className="text-[8px] tracking-[0.18em] text-slate-400 uppercase font-medium">{card.subtitle}</p>
+              <p className="text-3xl font-bold text-slate-800">{card.value.toLocaleString()}</p>
+              <p className="text-xs font-medium text-slate-400 mt-1 uppercase tracking-wider">{card.label}</p>
             </div>
           );
         })}
       </div>
 
+      {/* Recent Activity + Quick Actions */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        {/* Recent Activity */}
+        <div className="xl:col-span-2 bg-white rounded-2xl border border-slate-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FiClock className="w-4 h-4 text-slate-400" />
+              <h3 className="font-semibold text-slate-700 text-[15px]">Recent Activity</h3>
+            </div>
+            <span className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">Latest</span>
+          </div>
+          <div className="divide-y divide-slate-50">
+            {activities.length === 0 ? (
+              <div className="px-6 py-10 text-center">
+                <p className="text-sm text-slate-400">No recent activity yet</p>
+              </div>
+            ) : (
+              activities.map((a, i) => (
+                <div key={i} className="px-6 py-3.5 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${a.type === 'issued' ? 'bg-amber-400' : 'bg-emerald-400'}`}></div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-700 truncate">{a.book}</p>
+                      <p className="text-[12px] text-slate-400 truncate">{a.user}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0 ml-4">
+                    <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full capitalize
+                      ${a.type === 'issued'
+                        ? 'bg-amber-50 text-amber-600'
+                        : 'bg-emerald-50 text-emerald-600'
+                      }`}>
+                      {a.type}
+                    </span>
+                    <span className="text-[11px] text-slate-400 hidden sm:block">
+                      {new Date(a.time).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-6">
+          <h3 className="font-semibold text-slate-700 text-[15px] mb-5">Quick Actions</h3>
+          <div className="space-y-3">
+            {[
+              { label: 'Add New Book', desc: 'Add a book to inventory', path: '/add-book', icon: FiBook, color: 'blue' },
+              { label: 'Issue Book', desc: 'Issue to a student', path: '/issue', icon: FiSend, color: 'amber' },
+              { label: 'Return Book', desc: 'Process a return', path: '/return', icon: FiCheckCircle, color: 'emerald' },
+            ].map((action) => {
+              const Icon = action.icon;
+              return (
+                <Link
+                  key={action.path}
+                  to={action.path}
+                  className="flex items-center gap-3.5 p-3.5 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all duration-200 group"
+                >
+                  <div className={`w-9 h-9 rounded-lg bg-${action.color}-50 flex items-center justify-center`}>
+                    <Icon className={`w-4 h-4 text-${action.color}-500`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">{action.label}</p>
+                    <p className="text-[11px] text-slate-400">{action.desc}</p>
+                  </div>
+                  <FiArrowRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-all group-hover:translate-x-0.5" />
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

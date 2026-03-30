@@ -1,70 +1,83 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FiGrid, FiBook, FiPlusCircle, FiSend } from 'react-icons/fi';
+import {
+  FiGrid, FiBook, FiPlusCircle, FiSend, FiRotateCcw, FiX
+} from 'react-icons/fi';
 
-function Sidebar() {
+const menuItems = [
+  { path: '/', label: 'Dashboard', icon: FiGrid },
+  { path: '/books', label: 'Books', icon: FiBook },
+  { path: '/add-book', label: 'Add Book', icon: FiPlusCircle },
+  { path: '/issue', label: 'Issue Book', icon: FiSend },
+  { path: '/return', label: 'Return Book', icon: FiRotateCcw },
+];
+
+function Sidebar({ open, onClose }) {
   const location = useLocation();
 
-  const menuItems = [
-    { path: '/', label: 'COLLECTIONS', icon: FiGrid },
-    { path: '/books', label: 'INVENTORY', icon: FiBook },
-    { path: '/add-book', label: 'ADD TITLE', icon: FiPlusCircle },
-    { path: '/issue', label: 'DISTRIBUTION', icon: FiSend },
-  ];
-
   return (
-    <div className="fixed left-0 top-0 h-full w-64 z-10 flex flex-col items-center bg-white/80 backdrop-blur-xl border-r border-blue-100/60 shadow-[4px_0_24px_rgba(37,99,235,0.04)]">
-      {/* Logo area */}
-      <div className="pt-8 pb-10 w-full text-center">
-        <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-          <span className="text-white text-lg font-bold font-serif">L</span>
+    <>
+      {/* Mobile overlay */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <aside
+        className={`fixed top-0 left-0 h-full w-[260px] bg-white border-r border-slate-200 z-50 flex flex-col transition-transform duration-300 ease-in-out
+          ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+      >
+        {/* Header */}
+        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-600/20">
+              <FiBook className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold text-[15px] text-slate-800 tracking-tight">LibraryMS</span>
+          </div>
+          <button onClick={onClose} className="lg:hidden p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+            <FiX className="w-5 h-5 text-slate-400" />
+          </button>
         </div>
-        <h1 className="text-xl font-serif text-slate-800 tracking-[0.25em] font-semibold">L M S</h1>
-        <p className="text-[8px] tracking-[0.2em] text-blue-400 mt-1 uppercase">Library Suite</p>
-      </div>
 
-      {/* Divider */}
-      <div className="w-3/4 h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent mb-6" />
-
-      {/* Nav */}
-      <nav className="flex-1 w-full px-5 flex flex-col">
-        <ul className="space-y-2">
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
+        {/* Nav */}
+        <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
+          {menuItems.map(({ path, label, icon: Icon }) => {
+            const isActive = location.pathname === path;
             return (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] tracking-[0.18em] font-medium transition-all duration-300 group ${
-                    isActive
-                      ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25'
-                      : 'text-slate-500 hover:bg-blue-50 hover:text-blue-600'
+              <Link
+                key={path}
+                to={path}
+                onClick={onClose}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13.5px] font-medium transition-all duration-200 group
+                  ${isActive
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                   }`}
-                >
-                  <Icon className={`w-4 h-4 flex-shrink-0 transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-white' : ''}`} />
-                  {item.label}
-                </Link>
-              </li>
+              >
+                <Icon className={`w-[18px] h-[18px] transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                {label}
+              </Link>
             );
           })}
-        </ul>
-      </nav>
+        </nav>
 
-      {/* Bottom section */}
-      <div className="w-full px-5 pb-6">
-        <div className="w-full h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent mb-5" />
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100/60">
-          <p className="text-[9px] tracking-[0.12em] text-slate-500 uppercase font-medium">System Status</p>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="text-[10px] text-emerald-600 font-medium">All systems online</span>
+        {/* Footer */}
+        <div className="p-4 border-t border-slate-100">
+          <div className="bg-slate-50 rounded-xl p-3.5">
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Status</p>
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-[12px] text-emerald-600 font-medium">System Online</span>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      </aside>
+    </>
   );
 }
 
