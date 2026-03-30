@@ -2,10 +2,11 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import mysql.connector
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 app = Flask(__name__)
-CORS(app)  # Allow cross-origin requests from React
+CORS(app)
 
 # Database configuration
 DB_CONFIG = {
@@ -18,25 +19,140 @@ DB_CONFIG = {
 def get_db_connection():
     return mysql.connector.connect(**DB_CONFIG)
 
+def ensure_users_table():
+    """Create users table if it doesn't exist and seed default admin."""
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            email VARCHAR(255) NOT NULL UNIQUE,
+            password VARCHAR(255) NOT NULL,
+            role ENUM('admin', 'student') DEFAULT 'student',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    
+    # Seed default admin if no admin exists
+    cursor.execute("SELECT id FROM users WHERE role = 'admin' LIMIT 1")
+    if not cursor.fetchone():
+        hashed = generate_password_hash('admin123')
+        cursor.execute(
+            "INSERT INTO users (name, email, password, role) VALUES (%s, %s, %s, %s)",
+            ('Admin', 'admin@library.com', hashed, 'admin')
+        )
+        conn.commit()
+    
+    cursor.close()
+    conn.close()
+
+# Auto-create users table on startup
+ensure_users_table()
+
+
+# ─── AUTH ROUTES ───────────────────────────────────────────
+
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    data = request.json
+    name = data.get('name', '').strip()
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '')
+    role = data.get('role', 'student')
+    
+    if not name or not email or not password:
+        return jsonify({"message": "All fields are required"}), 400
+    
+    if len(password) < 6:
+        return jsonify({"message": "Password must be at least 6 characters"}), 400
+    
+    if role not in ('admin', 'student'):
+        role = 'student'
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Check if email already exists
+    cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+    if cursor.fetchone():
+        cursor.close()
+        conn.close()
+        return jsonify({"message": "Email already registered"}), 400
+    
+    try:
+        hashed = generate_password_hash(password)
+        cursor.execute(
+            "INSERT INTO users (name, email, password, role) VALUES (%s, %s, %s, %s)",
+            (name, email, hashed, role)
+        )
+        conn.commit()
+        
+        # Get the new user
+        cursor.execute("SELECT id, name, email, role FROM users WHERE id = %s", (cursor.lastrowid,))
+        user = cursor.fetchone()
+        
+        return jsonify({
+            "message": "Account created successfully!",
+            "user": user
+        }), 201
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"message": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    data = request.json
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '')
+    
+    if not email or not password:
+        return jsonify({"message": "Email and password are required"}), 400
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+    user = cursor.fetchone()
+    
+    cursor.close()
+    conn.close()
+    
+    if not user or not check_password_hash(user['password'], password):
+        return jsonify({"message": "Invalid email or password"}), 401
+    
+    return jsonify({
+        "message": "Login successful!",
+        "user": {
+            "id": user['id'],
+            "name": user['name'],
+            "email": user['email'],
+            "role": user['role']
+        }
+    })
+
+
+# ─── DASHBOARD ─────────────────────────────────────────────
+
 @app.route('/api/dashboard', methods=['GET'])
 def get_dashboard_stats():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     
-    # Get total books
     cursor.execute("SELECT SUM(quantity) as total FROM books")
     total_result = cursor.fetchone()
     total_books = int(total_result['total']) if total_result['total'] else 0
     
-    # Get available books
     cursor.execute("SELECT SUM(available_qty) as available FROM books")
     avail_result = cursor.fetchone()
     available_books = int(avail_result['available']) if avail_result['available'] else 0
     
-    # Issued books
     issued_books = total_books - available_books
 
-    # This month activity count
     cursor.execute("""
         SELECT COUNT(*) as cnt FROM issued_books 
         WHERE MONTH(issue_date) = MONTH(CURRENT_DATE()) 
@@ -45,7 +161,6 @@ def get_dashboard_stats():
     month_result = cursor.fetchone()
     this_month = int(month_result['cnt']) if month_result['cnt'] else 0
     
-    # Recent activity
     cursor.execute("""
         SELECT i.id, i.status as type, b.title as book, i.student_name as user, 
                i.issue_date as time, i.return_date
@@ -55,7 +170,6 @@ def get_dashboard_stats():
     """)
     recent_activity = cursor.fetchall()
     
-    # Serialize datetime objects
     for activity in recent_activity:
         if activity['time']:
             activity['time'] = activity['time'].strftime('%Y-%m-%d %H:%M:%S')
@@ -74,6 +188,9 @@ def get_dashboard_stats():
         },
         "recent_activities": recent_activity
     })
+
+
+# ─── BOOKS ─────────────────────────────────────────────────
 
 @app.route('/api/books', methods=['GET'])
 def get_books():
@@ -120,7 +237,6 @@ def delete_book(book_id):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     
-    # Check if any copies are currently issued
     cursor.execute("SELECT COUNT(*) as cnt FROM issued_books WHERE book_id = %s AND status = 'issued'", (book_id,))
     result = cursor.fetchone()
     
@@ -130,7 +246,6 @@ def delete_book(book_id):
         return jsonify({"message": "Cannot delete book with active issues. Return all copies first."}), 400
     
     try:
-        # Delete related issued_books records first
         cursor.execute("DELETE FROM issued_books WHERE book_id = %s", (book_id,))
         cursor.execute("DELETE FROM books WHERE id = %s", (book_id,))
         conn.commit()
@@ -142,6 +257,9 @@ def delete_book(book_id):
         cursor.close()
         conn.close()
 
+
+# ─── ISSUE / RETURN ────────────────────────────────────────
+
 @app.route('/api/issue', methods=['POST'])
 def issue_book():
     data = request.json
@@ -151,7 +269,6 @@ def issue_book():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     
-    # Check if book is available
     cursor.execute("SELECT available_qty FROM books WHERE id = %s", (book_id,))
     book = cursor.fetchone()
     
@@ -180,7 +297,6 @@ def return_book():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     
-    # Find the issued record
     cursor.execute("SELECT * FROM issued_books WHERE id = %s AND status = 'issued'", (issue_id,))
     record = cursor.fetchone()
     
@@ -203,7 +319,6 @@ def return_book():
 
 @app.route('/api/issued', methods=['GET'])
 def get_issued_books():
-    """Get all currently issued books for the Return Book page."""
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("""
