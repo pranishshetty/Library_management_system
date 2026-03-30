@@ -121,13 +121,10 @@ function Books() {
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md uppercase tracking-tighter">ID: {book.id}</span>
-                      <h3 className="font-semibold text-slate-800 text-[15px] truncate group-hover:text-blue-600 transition-colors">
-                        {book.title}
-                      </h3>
-                    </div>
-                    <p className="text-sm text-slate-400 mt-0.5 truncate">by {book.author}</p>
+                  <h3 className="font-semibold text-slate-800 text-[15px] truncate group-hover:text-blue-600 transition-colors">
+                    {book.title}
+                  </h3>
+                  <p className="text-sm text-slate-400 mt-0.5 truncate">by {book.author}</p>
                 </div>
                 <span className={`ml-3 text-[11px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0
                   ${book.available
