@@ -19,17 +19,83 @@ DB_CONFIG = {
 def get_db_connection():
     return mysql.connector.connect(**DB_CONFIG)
 
+def ensure_books_table():
+    """Create books table and seed sample books if empty."""
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS books (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            author VARCHAR(255) NOT NULL,
+            quantity INT NOT NULL,
+            available_qty INT NOT NULL
+        )
+    """)
+    conn.commit()
+    
+    cursor.execute("SELECT COUNT(*) as cnt FROM books")
+    if cursor.fetchone()['cnt'] == 0:
+        sample_books = [
+            ('The Great Gatsby', 'F. Scott Fitzgerald', 5, 5),
+            ('To Kill a Mockingbird', 'Harper Lee', 3, 3),
+            ('1984', 'George Orwell', 4, 4),
+            ('Pride and Prejudice', 'Jane Austen', 2, 2)
+        ]
+        cursor.executemany(
+            "INSERT INTO books (title, author, quantity, available_qty) VALUES (%s, %s, %s, %s)",
+            sample_books
+        )
+        conn.commit()
+    cursor.close()
+    conn.close()
+
+def ensure_requests_table():
+    """Create book_requests table if it doesn't exist."""
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS book_requests (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            book_id INT NOT NULL,
+            user_id INT NOT NULL,
+            status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+            request_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            response_date TIMESTAMP NULL,
+            FOREIGN KEY (book_id) REFERENCES books(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def ensure_issued_books_table():
+    """Create issued_books table if it doesn't exist."""
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS issued_books (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            book_id INT NOT NULL,
+            student_name VARCHAR(255) NOT NULL,
+            issue_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            return_date TIMESTAMP NULL,
+            status ENUM('issued', 'returned') DEFAULT 'issued',
+            FOREIGN KEY (book_id) REFERENCES books(id)
+        )
+    """)
+    conn.commit()
+    cursor.close()
+    conn.close()
+
 def ensure_users_table():
-    """Create users table with correct schema. Drops existing one to ensure sync."""
+    """Create users table if it doesn't exist."""
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     
-    # Drop and recreate to ensure all columns (email, role, etc.) are present
-    # This is safe for initial setup/dev phase
-    cursor.execute("DROP TABLE IF EXISTS users")
-    
     cursor.execute("""
-        CREATE TABLE users (
+        CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
             email VARCHAR(255) NOT NULL UNIQUE,
@@ -53,8 +119,7 @@ def ensure_users_table():
     cursor.close()
     conn.close()
 
-# Auto-create users table on startup
-ensure_users_table()
+# Auto-creation moved to main block for cleaner startup
 
 
 # ─── AUTH ROUTES ───────────────────────────────────────────
@@ -133,10 +198,10 @@ def login():
     return jsonify({
         "message": "Login successful!",
         "user": {
-            "id": user['id'],
-            "name": user['name'],
-            "email": user['email'],
-            "role": user['role']
+            'id': user['id'],
+            'name': user['name'],
+            'email': user['email'],
+            'role': user['role']
         }
     })
 
@@ -157,6 +222,9 @@ def get_dashboard_stats():
     available_books = int(avail_result['available']) if avail_result['available'] else 0
     
     issued_books = total_books - available_books
+
+    cursor.execute("SELECT COUNT(*) as cnt FROM book_requests WHERE status = 'pending'")
+    pending_requests = cursor.fetchone()['cnt']
 
     cursor.execute("""
         SELECT COUNT(*) as cnt FROM issued_books 
@@ -189,7 +257,8 @@ def get_dashboard_stats():
             "total_books": total_books,
             "available_books": available_books,
             "issued_books": issued_books,
-            "this_month": this_month
+            "this_month": this_month,
+            "pending_requests": pending_requests
         },
         "recent_activities": recent_activity
     })
@@ -344,5 +413,119 @@ def get_issued_books():
     conn.close()
     return jsonify(issued)
 
+@app.route('/api/requests', methods=['GET'])
+def get_requests():
+    user_id = request.args.get('user_id')
+    role = request.args.get('role')
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    query = """
+        SELECT r.*, b.title as book_title, b.author as book_author, u.name as student_name, u.email as student_email
+        FROM book_requests r
+        JOIN books b ON r.book_id = b.id
+        JOIN users u ON r.user_id = u.id
+    """
+    
+    if role == 'student' and user_id:
+        query += " WHERE r.user_id = %s"
+        cursor.execute(query + " ORDER BY r.request_date DESC", (user_id,))
+    else:
+        cursor.execute(query + " ORDER BY r.request_date DESC")
+        
+    reqs = cursor.fetchall()
+    
+    for r in reqs:
+        if r['request_date']:
+            r['request_date'] = r['request_date'].strftime('%Y-%m-%d %H:%M:%S')
+        if r['response_date']:
+            r['response_date'] = r['response_date'].strftime('%Y-%m-%d %H:%M:%S')
+            
+    cursor.close()
+    conn.close()
+    return jsonify(reqs)
+
+@app.route('/api/requests', methods=['POST'])
+def create_request():
+    data = request.json
+    book_id = data.get('book_id')
+    user_id = data.get('user_id')
+    
+    if not book_id or not user_id:
+        return jsonify({"message": "Missing book_id or user_id"}), 400
+        
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Check if a pending request already exists for this book & user
+    cursor.execute("SELECT id FROM book_requests WHERE book_id = %s AND user_id = %s AND status = 'pending'", (book_id, user_id))
+    if cursor.fetchone():
+        cursor.close()
+        conn.close()
+        return jsonify({"message": "You already have a pending request for this book"}), 400
+        
+    cursor.execute("INSERT INTO book_requests (book_id, user_id) VALUES (%s, %s)", (book_id, user_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return jsonify({"message": "Request sent successfully!"}), 201
+
+@app.route('/api/requests/<int:request_id>', methods=['PUT'])
+def handle_request(request_id):
+    data = request.json
+    status = data.get('status') # 'approved' or 'rejected'
+    
+    if status not in ['approved', 'rejected']:
+        return jsonify({"message": "Invalid status"}), 400
+        
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Get request details
+    cursor.execute("""
+        SELECT r.*, u.name as student_name, b.available_qty, b.id as book_id
+        FROM book_requests r
+        JOIN users u ON r.user_id = u.id
+        JOIN books b ON r.book_id = b.id
+        WHERE r.id = %s AND r.status = 'pending'
+    """, (request_id,))
+    req = cursor.fetchone()
+    
+    if not req:
+        cursor.close()
+        conn.close()
+        return jsonify({"message": "Request not found or already processed"}), 404
+        
+    try:
+        if status == 'approved':
+            # Check availability again
+            if req['available_qty'] <= 0:
+                return jsonify({"message": "Book no longer available"}), 400
+                
+            # Issue the book (reusing logic)
+            cursor.execute("UPDATE books SET available_qty = available_qty - 1 WHERE id = %s", (req['book_id'],))
+            cursor.execute("INSERT INTO issued_books (book_id, student_name) VALUES (%s, %s)", (req['book_id'], req['student_name']))
+            
+        cursor.execute("UPDATE book_requests SET status = %s, response_date = NOW() WHERE id = %s", (status, request_id))
+        conn.commit()
+        return jsonify({"message": f"Request {status} successfully!"}), 200
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"message": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
 if __name__ == '__main__':
+    print("🚀 Starting Library Management System Backend...")
+    try:
+        ensure_books_table()
+        ensure_users_table()
+        ensure_requests_table()
+        ensure_issued_books_table()
+        print("✅ Database initialized successfully.")
+    except Exception as e:
+        print(f"❌ Database initialization failed: {e}")
+        
     app.run(debug=True, port=5000)

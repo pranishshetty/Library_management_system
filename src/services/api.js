@@ -89,3 +89,37 @@ export const getIssuedBooks = async () => {
   if (!res.ok) throw new Error('Failed to fetch issued books');
   return res.json();
 };
+
+// ─── REQUESTS ──────────────────────────────────────────────
+
+export const createRequest = async (bookId, userId) => {
+  const res = await fetch(`${BASE_URL}/requests`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ book_id: bookId, user_id: userId }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to create request');
+  return data;
+};
+
+export const getRequests = async (userId = null, role = null) => {
+  let url = `${BASE_URL}/requests`;
+  if (userId && role) {
+    url += `?user_id=${userId}&role=${role}`;
+  }
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch requests');
+  return res.json();
+};
+
+export const updateRequestStatus = async (requestId, status) => {
+  const res = await fetch(`${BASE_URL}/requests/${requestId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to update request');
+  return data;
+};

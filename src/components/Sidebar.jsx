@@ -1,12 +1,14 @@
 import { Link, useLocation } from 'react-router-dom';
 import {
-  FiGrid, FiBook, FiPlusCircle, FiSend, FiRotateCcw, FiX, FiLock
+  FiGrid, FiBook, FiPlusCircle, FiSend, FiRotateCcw, FiX, FiLock, FiClock
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 
 const allMenuItems = [
   { path: '/', label: 'Dashboard', icon: FiGrid, roles: ['admin', 'student'] },
   { path: '/books', label: 'Books', icon: FiBook, roles: ['admin', 'student'] },
+  { path: '/requests', label: 'Book Requests', icon: FiClock, roles: ['admin'] },
+  { path: '/requests', label: 'My Requests', icon: FiClock, roles: ['student'] },
   { path: '/add-book', label: 'Add Book', icon: FiPlusCircle, roles: ['admin'] },
   { path: '/issue', label: 'Issue Book', icon: FiSend, roles: ['admin'] },
   { path: '/return', label: 'Return Book', icon: FiRotateCcw, roles: ['admin'] },

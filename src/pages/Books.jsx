@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { FiSearch, FiTrash2, FiSend, FiBook, FiFilter } from 'react-icons/fi';
-import { getBooks, deleteBook } from '../services/api';
+import { FiSearch, FiTrash2, FiSend, FiBook, FiFilter, FiClock, FiCheck, FiX, FiActivity } from 'react-icons/fi';
+import { getBooks, deleteBook, createRequest } from '../services/api';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -10,7 +10,7 @@ function Books() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const fetchBooks = () => {
     setLoading(true);
@@ -151,8 +151,8 @@ function Books() {
                 </div>
               </div>
 
-              {/* Actions — Admin only */}
-              {isAdmin && (
+              {/* Actions — Admin only or Student Request */}
+              {isAdmin ? (
                 <div className="flex gap-2 mt-3">
                   <Link
                     to="/issue"
@@ -165,6 +165,27 @@ function Books() {
                     className="flex items-center justify-center gap-1.5 py-2 px-4 rounded-xl bg-red-50 text-red-500 text-xs font-semibold hover:bg-red-100 transition-colors"
                   >
                     <FiTrash2 className="w-3.5 h-3.5" /> Delete
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-3">
+                  <button
+                    onClick={async () => {
+                      try {
+                        await createRequest(book.id, user.id);
+                        toast.success(`Request for "${book.title}" sent!`);
+                      } catch (err) {
+                        toast.error(err.message);
+                      }
+                    }}
+                    disabled={!book.available}
+                    className={`w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all
+                      ${book.available 
+                        ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-600/10' 
+                        : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+                  >
+                    <FiClock className="w-3.5 h-3.5" /> 
+                    {book.available ? 'Request Book' : 'Out of Stock'}
                   </button>
                 </div>
               )}

@@ -23,18 +23,19 @@ function Dashboard() {
     { label: 'Total Books', value: stats.total_books, icon: FiBook, bg: 'bg-blue-50', text: 'text-blue-600', ring: 'ring-blue-100' },
     { label: 'Available', value: stats.available_books, icon: FiCheckCircle, bg: 'bg-emerald-50', text: 'text-emerald-600', ring: 'ring-emerald-100' },
     { label: 'Issued', value: stats.issued_books, icon: FiSend, bg: 'bg-amber-50', text: 'text-amber-600', ring: 'ring-amber-100' },
-    { label: 'This Month', value: stats.this_month, icon: FiTrendingUp, bg: 'bg-violet-50', text: 'text-violet-600', ring: 'ring-violet-100' },
+    { label: 'Requests', value: stats.pending_requests || 0, icon: FiClock, bg: 'bg-violet-50', text: 'text-violet-600', ring: 'ring-violet-100' },
   ];
 
   // Quick actions differ by role
   const quickActions = isAdmin
     ? [
         { label: 'Add New Book', desc: 'Add a book to inventory', path: '/add-book', icon: FiBook, color: 'blue' },
+        { label: 'Book Requests', desc: 'Approve or reject', path: '/requests', icon: FiClock, color: 'violet' },
         { label: 'Issue Book', desc: 'Issue to a student', path: '/issue', icon: FiSend, color: 'amber' },
-        { label: 'Return Book', desc: 'Process a return', path: '/return', icon: FiCheckCircle, color: 'emerald' },
       ]
     : [
         { label: 'Browse Books', desc: 'View available books', path: '/books', icon: FiBook, color: 'blue' },
+        { label: 'My Requests', desc: 'Track request status', path: '/requests', icon: FiClock, color: 'violet' },
       ];
 
   if (loading) {

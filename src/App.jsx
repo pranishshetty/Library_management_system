@@ -8,6 +8,7 @@ import Books from './pages/Books';
 import AddBook from './pages/AddBook';
 import Issue from './pages/Issue';
 import ReturnBook from './pages/ReturnBook';
+import Requests from './pages/Requests';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -52,6 +53,11 @@ function AppRoutes() {
       <Route path="/return" element={
         <ProtectedRoute adminOnly>
           <Layout><ReturnBook /></Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/requests" element={
+        <ProtectedRoute>
+          <Layout><Requests /></Layout>
         </ProtectedRoute>
       } />
 
