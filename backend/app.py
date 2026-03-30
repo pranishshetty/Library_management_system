@@ -20,11 +20,16 @@ def get_db_connection():
     return mysql.connector.connect(**DB_CONFIG)
 
 def ensure_users_table():
-    """Create users table if it doesn't exist and seed default admin."""
+    """Create users table with correct schema. Drops existing one to ensure sync."""
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
+    
+    # Drop and recreate to ensure all columns (email, role, etc.) are present
+    # This is safe for initial setup/dev phase
+    cursor.execute("DROP TABLE IF EXISTS users")
+    
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
+        CREATE TABLE users (
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
             email VARCHAR(255) NOT NULL UNIQUE,

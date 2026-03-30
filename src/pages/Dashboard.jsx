@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FiBook, FiCheckCircle, FiSend, FiTrendingUp, FiArrowRight, FiClock } from 'react-icons/fi';
 import { getDashboard } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { user, isAdmin } = useAuth();
 
   useEffect(() => {
     getDashboard()
@@ -18,11 +20,22 @@ function Dashboard() {
   const activities = data?.recent_activities || [];
 
   const statCards = [
-    { label: 'Total Books', value: stats.total_books, icon: FiBook, color: 'blue', bg: 'bg-blue-50', text: 'text-blue-600', ring: 'ring-blue-100' },
-    { label: 'Available', value: stats.available_books, icon: FiCheckCircle, color: 'emerald', bg: 'bg-emerald-50', text: 'text-emerald-600', ring: 'ring-emerald-100' },
-    { label: 'Issued', value: stats.issued_books, icon: FiSend, color: 'amber', bg: 'bg-amber-50', text: 'text-amber-600', ring: 'ring-amber-100' },
-    { label: 'This Month', value: stats.this_month, icon: FiTrendingUp, color: 'violet', bg: 'bg-violet-50', text: 'text-violet-600', ring: 'ring-violet-100' },
+    { label: 'Total Books', value: stats.total_books, icon: FiBook, bg: 'bg-blue-50', text: 'text-blue-600', ring: 'ring-blue-100' },
+    { label: 'Available', value: stats.available_books, icon: FiCheckCircle, bg: 'bg-emerald-50', text: 'text-emerald-600', ring: 'ring-emerald-100' },
+    { label: 'Issued', value: stats.issued_books, icon: FiSend, bg: 'bg-amber-50', text: 'text-amber-600', ring: 'ring-amber-100' },
+    { label: 'This Month', value: stats.this_month, icon: FiTrendingUp, bg: 'bg-violet-50', text: 'text-violet-600', ring: 'ring-violet-100' },
   ];
+
+  // Quick actions differ by role
+  const quickActions = isAdmin
+    ? [
+        { label: 'Add New Book', desc: 'Add a book to inventory', path: '/add-book', icon: FiBook, color: 'blue' },
+        { label: 'Issue Book', desc: 'Issue to a student', path: '/issue', icon: FiSend, color: 'amber' },
+        { label: 'Return Book', desc: 'Process a return', path: '/return', icon: FiCheckCircle, color: 'emerald' },
+      ]
+    : [
+        { label: 'Browse Books', desc: 'View available books', path: '/books', icon: FiBook, color: 'blue' },
+      ];
 
   if (loading) {
     return (
@@ -40,16 +53,22 @@ function Dashboard() {
       {/* Welcome */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Welcome back! 👋</h2>
-          <p className="text-sm text-slate-400 mt-0.5">Here's what's happening in your library today.</p>
+          <h2 className="text-2xl font-bold text-slate-800">Welcome back, {user?.name}! 👋</h2>
+          <p className="text-sm text-slate-400 mt-0.5">
+            {isAdmin
+              ? "Here's what's happening in your library today."
+              : "Browse and explore the library collection."}
+          </p>
         </div>
-        <Link
-          to="/add-book"
-          className="inline-flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-600/20 w-fit"
-        >
-          Add New Book
-          <FiArrowRight className="w-4 h-4" />
-        </Link>
+        {isAdmin && (
+          <Link
+            to="/add-book"
+            className="inline-flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-600/20 w-fit"
+          >
+            Add New Book
+            <FiArrowRight className="w-4 h-4" />
+          </Link>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -122,11 +141,7 @@ function Dashboard() {
         <div className="bg-white rounded-2xl border border-slate-100 p-6">
           <h3 className="font-semibold text-slate-700 text-[15px] mb-5">Quick Actions</h3>
           <div className="space-y-3">
-            {[
-              { label: 'Add New Book', desc: 'Add a book to inventory', path: '/add-book', icon: FiBook, color: 'blue' },
-              { label: 'Issue Book', desc: 'Issue to a student', path: '/issue', icon: FiSend, color: 'amber' },
-              { label: 'Return Book', desc: 'Process a return', path: '/return', icon: FiCheckCircle, color: 'emerald' },
-            ].map((action) => {
+            {quickActions.map((action) => {
               const Icon = action.icon;
               return (
                 <Link
@@ -146,6 +161,16 @@ function Dashboard() {
               );
             })}
           </div>
+
+          {/* Student info box */}
+          {!isAdmin && (
+            <div className="mt-5 bg-amber-50 border border-amber-100 rounded-xl p-4">
+              <p className="text-xs font-semibold text-amber-700 mb-1">Student Account</p>
+              <p className="text-[11px] text-amber-600 leading-relaxed">
+                You can browse and view books. Contact a librarian to issue or return books.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

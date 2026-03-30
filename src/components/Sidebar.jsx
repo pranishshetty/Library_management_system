@@ -1,18 +1,24 @@
 import { Link, useLocation } from 'react-router-dom';
 import {
-  FiGrid, FiBook, FiPlusCircle, FiSend, FiRotateCcw, FiX
+  FiGrid, FiBook, FiPlusCircle, FiSend, FiRotateCcw, FiX, FiLock
 } from 'react-icons/fi';
+import { useAuth } from '../context/AuthContext';
 
-const menuItems = [
-  { path: '/', label: 'Dashboard', icon: FiGrid },
-  { path: '/books', label: 'Books', icon: FiBook },
-  { path: '/add-book', label: 'Add Book', icon: FiPlusCircle },
-  { path: '/issue', label: 'Issue Book', icon: FiSend },
-  { path: '/return', label: 'Return Book', icon: FiRotateCcw },
+const allMenuItems = [
+  { path: '/', label: 'Dashboard', icon: FiGrid, roles: ['admin', 'student'] },
+  { path: '/books', label: 'Books', icon: FiBook, roles: ['admin', 'student'] },
+  { path: '/add-book', label: 'Add Book', icon: FiPlusCircle, roles: ['admin'] },
+  { path: '/issue', label: 'Issue Book', icon: FiSend, roles: ['admin'] },
+  { path: '/return', label: 'Return Book', icon: FiRotateCcw, roles: ['admin'] },
 ];
 
 function Sidebar({ open, onClose }) {
   const location = useLocation();
+  const { user } = useAuth();
+  const role = user?.role || 'student';
+
+  // Filter menu items by role
+  const menuItems = allMenuItems.filter(item => item.roles.includes(role));
 
   return (
     <>
@@ -41,8 +47,20 @@ function Sidebar({ open, onClose }) {
           </button>
         </div>
 
+        {/* Role badge */}
+        <div className="px-6 pt-4 pb-2">
+          <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg uppercase tracking-wider ${
+            role === 'admin'
+              ? 'bg-indigo-50 text-indigo-600'
+              : 'bg-blue-50 text-blue-600'
+          }`}>
+            {role === 'admin' ? <FiLock className="w-3 h-3" /> : <FiBook className="w-3 h-3" />}
+            {role} Account
+          </span>
+        </div>
+
         {/* Nav */}
-        <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
           {menuItems.map(({ path, label, icon: Icon }) => {
             const isActive = location.pathname === path;
             return (
