@@ -1,0 +1,31 @@
+CREATE DATABASE IF NOT EXISTS library_db;
+USE library_db;
+
+CREATE TABLE IF NOT EXISTS books (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    author VARCHAR(255) NOT NULL,
+    quantity INT NOT NULL,
+    available_qty INT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS issued_books (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    book_id INT NOT NULL,
+    student_name VARCHAR(255) NOT NULL,
+    issue_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    return_date TIMESTAMP NULL,
+    status ENUM('issued', 'returned') DEFAULT 'issued',
+    FOREIGN KEY (book_id) REFERENCES books(id)
+);
+
+-- Insert dummy data
+INSERT INTO books (title, author, quantity, available_qty) VALUES
+('The Great Gatsby', 'F. Scott Fitzgerald', 5, 4),
+('To Kill a Mockingbird', 'Harper Lee', 3, 3),
+('1984', 'George Orwell', 4, 3),
+('Pride and Prejudice', 'Jane Austen', 2, 2);
+
+INSERT INTO issued_books (book_id, student_name, status) VALUES
+(1, 'John Smith', 'issued'),
+(3, 'Sarah Johnson', 'issued');
