@@ -15,7 +15,7 @@ function Navbar({ onMenuClick }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isAdmin } = useAuth();
-  const title = PAGE_TITLES[location.pathname] || 'Library Management System';
+  const title = PAGE_TITLES[location.pathname] || 'LibraryMS';
 
   const handleLogout = () => {
     logout();
@@ -35,7 +35,7 @@ function Navbar({ onMenuClick }) {
         </button>
         <div>
           <h1 className="text-lg font-bold text-slate-800 leading-tight">{title}</h1>
-          <p className="text-[11px] text-slate-400 font-medium hidden sm:block">Library Management System</p>
+          <p className="text-[11px] text-slate-400 font-medium hidden sm:block">LibraryMS | System</p>
         </div>
       </div>
 
